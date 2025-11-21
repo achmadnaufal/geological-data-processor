@@ -45,3 +45,8 @@ geological-data-processor/
 ## License
 
 MIT License — free to use, modify, and distribute.
+
+## 🚀 New Features (2026-03-02)
+- Add 3D visualization and geostatistical kriging methods
+- Enhanced error handling and edge case coverage
+- Comprehensive unit tests and integration examples
