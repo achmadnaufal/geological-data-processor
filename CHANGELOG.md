@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-04
+### Added
+- `composite_intervals()`: length-weighted grade compositing to fixed interval length
+- `estimate_resources()`: block model-based tonnage/grade/metal quantity estimation
+- Grade cutoff filtering and percentile grade distribution reporting
+- Auto-detection of grade columns if standard name not found
+- Realistic sample data: 4 boreholes with 19 assay intervals
+- 14 unit tests covering validation, compositing, and resource estimation
+### Fixed
+- `validate()` now checks from_m < to_m consistency (catches overlapping intervals)
+- `preprocess()` auto-calculates interval_m from from_m/to_m if missing
 ## [1.1.0] - 2026-03-02
 ### Added
 - Add 3D visualization and geostatistical kriging methods
