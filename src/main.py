@@ -263,3 +263,101 @@ class GeoDataProcessor:
             else:
                 rows.append({"metric": k, "value": v})
         return pd.DataFrame(rows)
+
+
+    def grade_tonnage_curve(
+        self,
+        df: pd.DataFrame,
+        grade_col: str = "grade_pct",
+        cutoffs: Optional[List[float]] = None,
+    ) -> pd.DataFrame:
+        """
+        Generate a grade-tonnage curve for resource estimation.
+
+        For each cutoff grade, calculates the tonnage above cutoff,
+        average grade above cutoff, and contained metal/mineral.
+
+        Args:
+            df: Assay DataFrame with interval_m and grade column.
+            grade_col: Name of grade column (e.g. 'grade_pct', 'grade_gt').
+            cutoffs: List of cutoff grade values. Defaults to 0.0 to max in 10 steps.
+
+        Returns:
+            DataFrame with cutoff_grade, tonnes_above_cutoff, avg_grade_above_cutoff,
+            contained_metal (tonnes * avg_grade).
+        """
+        df = self.preprocess(df)
+        if grade_col not in df.columns:
+            available = [c for c in df.columns if "grade" in c.lower()]
+            raise ValueError(f"Grade column '{grade_col}' not found. Available: {available}")
+        if "interval_m" not in df.columns:
+            raise ValueError("Column 'interval_m' required for grade-tonnage curve")
+
+        max_grade = float(df[grade_col].max())
+        if cutoffs is None:
+            cutoffs = list(np.linspace(0, max_grade * 0.9, 10).round(4))
+
+        density = self.density_t_m3
+        rows = []
+        for cutoff in sorted(cutoffs):
+            above = df[df[grade_col] >= cutoff]
+            if above.empty:
+                rows.append({
+                    "cutoff_grade": cutoff,
+                    "tonnes_above_cutoff": 0.0,
+                    "avg_grade_above_cutoff": None,
+                    "contained_metal": 0.0,
+                    "interval_count": 0,
+                })
+                continue
+            # Approximate tonnage: interval length × assumed cross-section × density
+            # Using 1 m² cross-section per borehole interval (relative comparison)
+            tonnage = float((above["interval_m"] * density).sum())
+            avg_grade = float(
+                np.average(above[grade_col], weights=above["interval_m"])
+            )
+            rows.append({
+                "cutoff_grade": round(cutoff, 4),
+                "tonnes_above_cutoff": round(tonnage, 1),
+                "avg_grade_above_cutoff": round(avg_grade, 4),
+                "contained_metal": round(tonnage * avg_grade / 100, 2),
+                "interval_count": len(above),
+            })
+        return pd.DataFrame(rows)
+
+    def borehole_summary(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Summarize borehole statistics per hole_id.
+
+        Args:
+            df: Assay DataFrame with hole_id, interval_m, and grade columns.
+
+        Returns:
+            DataFrame with hole_id, total_depth_m, interval_count,
+            max_grade, avg_grade, and weighted_avg_grade.
+        """
+        df = self.preprocess(df)
+        grade_cols = [c for c in df.columns if "grade" in c.lower()]
+        if "hole_id" not in df.columns:
+            raise ValueError("Column 'hole_id' required for borehole summary")
+
+        agg = df.groupby("hole_id").agg(
+            total_depth_m=("interval_m", "sum") if "interval_m" in df.columns else ("hole_id", "count"),
+            interval_count=("hole_id", "count"),
+        ).reset_index()
+
+        if grade_cols:
+            g = grade_cols[0]
+            grade_agg = df.groupby("hole_id").apply(
+                lambda x: pd.Series({
+                    "max_grade": x[g].max(),
+                    "avg_grade": x[g].mean(),
+                    "weighted_avg_grade": (
+                        np.average(x[g], weights=x["interval_m"])
+                        if "interval_m" in x.columns else x[g].mean()
+                    ),
+                })
+            ).reset_index()
+            agg = agg.merge(grade_agg, on="hole_id")
+
+        return agg.round(4)

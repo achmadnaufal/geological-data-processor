@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-05
+### Added
+- `grade_tonnage_curve()`: generates grade-tonnage curve across cutoff grades with contained metal estimate
+- `borehole_summary()`: per-hole statistics including total depth, max grade, and weighted-average grade
+- 8 new unit tests covering grade-tonnage curve and borehole summary
+### Improved
+- README updated with grade-tonnage curve example and resource estimation workflow
+
 ## [1.2.0] - 2026-03-04
 ### Added
 - `composite_intervals()`: length-weighted grade compositing to fixed interval length
