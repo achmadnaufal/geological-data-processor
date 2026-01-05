@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0] - 2026-03-15
+
+### Added
+- **JORC Resource Classification** — `classify_resource_confidence()`: Classifies resources as Measured/Indicated/Inferred per JORC 2012 based on drill spacing and sample density
+- **Tonnage Estimator** — `estimate_tonnage()`: Calculates in-situ and contained tonnage from area, thickness, and bulk density inputs
+- **Unit Tests** — 11 new tests in `tests/test_resource_classification.py` covering JORC classification, tonnage calculation, and error handling
+- **README** — Added JORC classification and tonnage estimation usage examples
+
+### Improved
+- Docstrings across all methods now include `Raises` and `Example` sections
+
 ## [CURRENT] - 2026-03-07
 
 ### Added

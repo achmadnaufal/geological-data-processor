@@ -361,3 +361,126 @@ class GeoDataProcessor:
             agg = agg.merge(grade_agg, on="hole_id")
 
         return agg.round(4)
+
+    def classify_resource_confidence(
+        self,
+        df: pd.DataFrame,
+        drill_spacing_m: float,
+        min_samples: int = 3,
+    ) -> dict:
+        """
+        Classify mineral resource confidence per JORC 2012 framework.
+
+        Assigns Measured / Indicated / Inferred confidence based on
+        drill spacing and data density.
+
+        Args:
+            df: DataFrame with hole_id and assay data
+            drill_spacing_m: Average drill hole spacing in metres
+            min_samples: Minimum number of samples for classification
+
+        Returns:
+            Dict with jorc_classification, confidence_score (0-100),
+            drill_spacing_m, sample_count, and classification_rationale
+
+        Raises:
+            ValueError: If drill_spacing_m <= 0 or DataFrame is empty
+
+        Example:
+            >>> proc = GeologicalDataProcessor()
+            >>> result = proc.classify_resource_confidence(df, drill_spacing_m=50.0)
+            >>> print(result["jorc_classification"])  # "Indicated"
+        """
+        if drill_spacing_m <= 0:
+            raise ValueError("drill_spacing_m must be positive")
+        if df is None or len(df) == 0:
+            raise ValueError("DataFrame cannot be empty")
+
+        sample_count = len(df)
+        unique_holes = df["hole_id"].nunique() if "hole_id" in df.columns else 1
+
+        # JORC 2012 classification by drill spacing
+        if drill_spacing_m <= 25 and sample_count >= min_samples * 3 and unique_holes >= 4:
+            classification = "Measured"
+            confidence_score = min(100.0, 95 - (drill_spacing_m / 25) * 20)
+            rationale = "Tight drill spacing with high sample density — high geological confidence"
+        elif drill_spacing_m <= 100 and sample_count >= min_samples and unique_holes >= 2:
+            classification = "Indicated"
+            confidence_score = min(80.0, 75 - (drill_spacing_m - 25) / 75 * 30)
+            rationale = "Moderate drill spacing — sufficient for Indicated resource estimation"
+        else:
+            classification = "Inferred"
+            confidence_score = max(10.0, 40 - (drill_spacing_m - 100) / 100 * 20)
+            rationale = "Wide drill spacing or limited data — inferred classification only"
+
+        # Adjust confidence for sample count
+        if sample_count < min_samples:
+            confidence_score *= 0.5
+            classification = "Inferred"
+            rationale = f"Insufficient samples (need ≥ {min_samples})"
+
+        return {
+            "jorc_classification": classification,
+            "confidence_score": round(confidence_score, 1),
+            "drill_spacing_m": drill_spacing_m,
+            "sample_count": sample_count,
+            "unique_drill_holes": unique_holes,
+            "classification_rationale": rationale,
+            "reporting_standard": "JORC 2012",
+        }
+
+    def estimate_tonnage(
+        self,
+        df: pd.DataFrame,
+        area_sqm: float,
+        avg_thickness_m: float,
+        bulk_density_t_m3: float = 1.35,
+        grade_column: str = "grade",
+    ) -> dict:
+        """
+        Estimate resource tonnage and contained metal/mineral.
+
+        Args:
+            df: Assay DataFrame
+            area_sqm: Ore body area in square metres
+            avg_thickness_m: Average ore thickness in metres
+            bulk_density_t_m3: In-situ bulk density (t/m³), default 1.35 for coal
+            grade_column: Name of grade column to use
+
+        Returns:
+            Dict with in_situ_tonnes, contained_tonnes, avg_grade, volume_m3
+
+        Raises:
+            ValueError: If area, thickness, or density are non-positive
+
+        Example:
+            >>> result = proc.estimate_tonnage(df, area_sqm=500000, avg_thickness_m=4.5)
+            >>> print(f"In-situ: {result['in_situ_tonnes']:,.0f} t")
+        """
+        if area_sqm <= 0:
+            raise ValueError("area_sqm must be positive")
+        if avg_thickness_m <= 0:
+            raise ValueError("avg_thickness_m must be positive")
+        if bulk_density_t_m3 <= 0:
+            raise ValueError("bulk_density_t_m3 must be positive")
+
+        volume_m3 = area_sqm * avg_thickness_m
+        in_situ_tonnes = volume_m3 * bulk_density_t_m3
+
+        avg_grade = None
+        contained_tonnes = None
+        if df is not None and grade_column in df.columns:
+            numeric_grades = pd.to_numeric(df[grade_column], errors="coerce").dropna()
+            if len(numeric_grades) > 0:
+                avg_grade = float(numeric_grades.mean())
+                contained_tonnes = in_situ_tonnes * avg_grade / 100.0
+
+        return {
+            "in_situ_tonnes": round(in_situ_tonnes, 0),
+            "volume_m3": round(volume_m3, 0),
+            "bulk_density_t_m3": bulk_density_t_m3,
+            "avg_grade_pct": round(avg_grade, 3) if avg_grade is not None else None,
+            "contained_tonnes": round(contained_tonnes, 0) if contained_tonnes is not None else None,
+            "area_sqm": area_sqm,
+            "avg_thickness_m": avg_thickness_m,
+        }
