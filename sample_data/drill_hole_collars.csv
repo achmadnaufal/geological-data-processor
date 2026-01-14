@@ -1,0 +1,11 @@
+hole_id,easting,northing,elevation_m,total_depth_m,dip_degrees,azimuth_degrees,hole_type,notes
+DDH-2024-001,355420,9705810,142.5,300.0,-65,270,DD,Western lobe infill
+DDH-2024-002,355620,9705990,141.2,280.0,-70,270,DD,Step-out from resource
+DDH-2024-003,355220,9706120,143.8,350.0,-60,90,DD,Eastern extension test
+DDH-2024-004,355840,9705680,140.1,260.0,-75,180,DD,Southern plunge
+DDH-2024-005,355550,9706350,145.0,320.0,-65,0,DD,Northern step-out
+RC-2024-001,356100,9705900,138.5,120.0,-60,90,RC,Pre-collar for DDH-2024-006
+RC-2024-002,354800,9705600,144.2,100.0,-55,270,RC,Shallow resource confirmation
+RC-2024-003,355900,9706200,139.8,110.0,-60,180,RC,Oxide zone characterisation
+DDH-2024-006,356100,9705900,138.5,400.0,-70,270,DD,Deep plunge extension (after RC pre-collar)
+DDH-2024-007,355100,9706500,147.3,240.0,-65,90,DD,Northern boundary hole
