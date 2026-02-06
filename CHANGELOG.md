@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.6.0] - 2026-03-23
+
+### Added
+- `src/composite_interval_sampler.py` — Borehole assay compositing for resource estimation
+  - `AssayInterval` dataclass with full depth/grade validation
+  - `CompositeIntervalSampler` with three compositing strategies:
+    - `fixed_length_composite()` — regular downhole composites with Tromp-style overlap
+    - `bench_composite()` — open-pit bench height composites
+    - `seam_composite()` — zone/seam weighted-average composites
+  - `hole_summary()` — per-borehole grade statistics and zone list
+  - Missing-value handling (NaN/negative grades excluded from weighted averages)
+- `data/sample_assay_intervals.csv` — 24 intervals across 3 Kalimantan coal boreholes
+- 27 unit tests in `tests/test_composite_interval_sampler.py`
+
+### References
+- Rossi & Deutsch (2014) Mineral Resource Estimation, ch.5
+- JORC Code 2012 Section 1
+
 ## [1.5.0] - 2026-03-22
 
 ### Added
