@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0] - 2026-03-26
+
+### Added
+- **VariogramModelFitter** (`src/variogram_model_fitter.py`) — geostatistical variogram model fitting for kriging
+  - Three theoretical model types: Spherical, Exponential, Gaussian (+ Nugget-Only)
+  - `VariogramModel` dataclass: nugget, partial sill, range, anisotropy ratio/azimuth
+  - `gamma_at(h)`: theoretical semi-variance at any lag distance
+  - Nugget effect classification: very_low / low / moderate / high / very_high
+  - `fit()`: RMSE and R² assessment against experimental variogram points
+  - Fit quality: GOOD / ACCEPTABLE / POOR classification
+  - Reliable lag filtering: excludes lag classes with insufficient sample pairs
+  - `select_best_model()`: automated model selection by RMSE from candidate list
+  - `drill_spacing_recommendation()`: JORC Measured/Indicated/Inferred spacing from range
+  - Kriging recommendations: high nugget effect warnings, range coverage checks, pair count alerts
+- Unit tests: 15 new tests in `tests/test_variogram_model_fitter.py`
+
 ## [1.6.0] - 2026-03-23
 
 ### Added
