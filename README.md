@@ -88,3 +88,9 @@ geological-data-processor/
 ├── examples/             # Usage scripts
 └── sample_data/          # Sample datasets
 ```
+
+## Edge Case Handling
+
+This version includes improved validation and edge case handling across all data inputs.
+See sample_data/realistic_data.csv for example datasets.
+
