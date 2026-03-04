@@ -1,12 +1,21 @@
 # Geological Data Processor
 
-Geological borehole data processing, visualization, and resource estimation utilities
+Borehole data processing, interval compositing, and mineral resource estimation for mining exploration.
+
+## Domain Context
+
+In coal and mineral exploration, drill holes (boreholes) are sampled at regular intervals to
+measure grade (e.g. coal quality, mineral concentration). This tool helps geologists process
+raw assay data: standardize intervals, composite to fixed lengths, and estimate in-situ
+resources (tonnage × grade) above a cutoff grade.
 
 ## Features
-- Data ingestion from CSV/Excel input files
-- Automated analysis and KPI calculation
-- Summary statistics and trend reporting
-- Sample data generator for testing and development
+- **Borehole data ingestion**: CSV/Excel with automatic column normalization
+- **Interval validation**: Catches overlapping or zero-length intervals
+- **Compositing**: Length-weighted grade compositing to fixed interval lengths
+- **Resource estimation**: Tonnage and metal quantity calculation with cutoff filtering
+- **Grade distribution**: Percentile breakdown (P10/P25/P50/P75/P90)
+- **Sample data**: Realistic multi-hole assay dataset
 
 ## Installation
 
@@ -19,34 +28,34 @@ pip install -r requirements.txt
 ```python
 from src.main import GeoDataProcessor
 
-analyzer = GeoDataProcessor()
-df = analyzer.load_data("data/sample.csv")
-result = analyzer.analyze(df)
-print(result)
+proc = GeoDataProcessor(config={"density_t_m3": 1.80, "cutoff_grade": 0.3})
+
+df = proc.load_data("sample_data/borehole_assay.csv")
+proc.validate(df)
+
+# Estimate resources above 0.3% cutoff
+resources = proc.estimate_resources(df, cutoff_grade=0.3)
+print(f"Total Tonnes: {resources['total_tonnes']:,.1f}")
+print(f"Mean Grade:   {resources['mean_grade']:.3f}%")
+print(f"Metal Qty:    {resources['metal_quantity']:.2f}")
+
+# Composite to 2m intervals
+composites = proc.composite_intervals(df, composite_length_m=2.0)
+print(composites.head())
 ```
 
 ## Data Format
 
-Expected CSV columns: `hole_id, from_m, to_m, lithology, coal_seam, calorific_value, thickness_m`
+| Column | Description |
+|--------|-------------|
+| hole_id | Borehole identifier |
+| from_m | Start depth (m) |
+| to_m | End depth (m) |
+| grade_pct | Assay grade (%) |
+| lithology | Rock type description |
 
-## Project Structure
+## Running Tests
 
+```bash
+pytest tests/ -v
 ```
-geological-data-processor/
-├── src/
-│   ├── main.py          # Core analysis logic
-│   └── data_generator.py # Sample data generator
-├── data/                # Data directory (gitignored for real data)
-├── examples/            # Usage examples
-├── requirements.txt
-└── README.md
-```
-
-## License
-
-MIT License — free to use, modify, and distribute.
-
-## 🚀 New Features (2026-03-02)
-- Add 3D visualization and geostatistical kriging methods
-- Enhanced error handling and edge case coverage
-- Comprehensive unit tests and integration examples

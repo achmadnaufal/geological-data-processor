@@ -1,44 +1,239 @@
 """
-Geological borehole data processing, visualization, and resource estimation utilities
+Geological borehole data processing, visualization, and resource estimation.
+
+Provides tools for processing borehole collar/survey/assay data from mineral
+exploration campaigns, computing composite intervals, and estimating in-situ
+resource tonnage and grade using block model principles.
 
 Author: github.com/achmadnaufal
 """
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class GeoDataProcessor:
-    """Geological borehole data processor"""
+    """
+    Geological borehole data processor for mineral exploration.
+
+    Handles collar/survey/assay data ingestion, interval compositing,
+    grade distribution statistics, and block model-based resource estimation.
+
+    Args:
+        config: Optional dict with keys:
+            - density_t_m3: Rock density for tonnage calculation (default 1.75)
+            - cutoff_grade: Minimum grade cutoff for resource reporting (default 0)
+
+    Example:
+        >>> proc = GeoDataProcessor(config={"density_t_m3": 1.8, "cutoff_grade": 0.3})
+        >>> df = proc.load_data("data/assay_data.csv")
+        >>> resources = proc.estimate_resources(df)
+        >>> print(resources)
+    """
 
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
+        self.density_t_m3 = self.config.get("density_t_m3", 1.75)
+        self.cutoff_grade = self.config.get("cutoff_grade", 0)
 
     def load_data(self, filepath: str) -> pd.DataFrame:
-        """Load data from CSV or Excel file."""
+        """
+        Load geological data from CSV or Excel file.
+
+        Args:
+            filepath: Path to file. Expected columns for assay data:
+                      hole_id, from_m, to_m, interval_m, grade_pct (or grade_gt for gold)
+
+        Returns:
+            DataFrame with borehole data.
+
+        Raises:
+            FileNotFoundError: If file does not exist.
+        """
         p = Path(filepath)
+        if not p.exists():
+            raise FileNotFoundError(f"Data file not found: {filepath}")
         if p.suffix in (".xlsx", ".xls"):
             return pd.read_excel(filepath)
         return pd.read_csv(filepath)
 
     def validate(self, df: pd.DataFrame) -> bool:
-        """Basic validation of input data."""
+        """
+        Validate borehole data for completeness and logical consistency.
+
+        Args:
+            df: DataFrame with borehole assay data.
+
+        Returns:
+            True if validation passes.
+
+        Raises:
+            ValueError: If empty, missing columns, or from >= to intervals.
+        """
         if df.empty:
             raise ValueError("Input DataFrame is empty")
+        df_cols = [c.lower().strip().replace(" ", "_") for c in df.columns]
+        if "from_m" in df_cols and "to_m" in df_cols:
+            df2 = df.copy()
+            df2.columns = df_cols
+            bad = df2[df2["from_m"] >= df2["to_m"]]
+            if not bad.empty:
+                raise ValueError(
+                    f"{len(bad)} intervals have from_m >= to_m (overlapping or zero-length)"
+                )
         return True
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean and preprocess input data."""
+        """
+        Clean and standardize borehole data.
+
+        Normalizes column names, drops fully empty rows, calculates interval
+        length if from_m and to_m are present.
+
+        Args:
+            df: Raw borehole DataFrame.
+
+        Returns:
+            Preprocessed DataFrame.
+        """
         df = df.copy()
-        # Drop fully empty rows
         df.dropna(how="all", inplace=True)
-        # Standardize column names
         df.columns = [c.lower().strip().replace(" ", "_") for c in df.columns]
+        if "from_m" in df.columns and "to_m" in df.columns:
+            df["interval_m"] = (df["to_m"] - df["from_m"]).round(3)
+        num_cols = df.select_dtypes(include="number").columns
+        for col in num_cols:
+            if df[col].isnull().any():
+                df[col].fillna(df[col].median(), inplace=True)
         return df
 
+    def composite_intervals(
+        self, df: pd.DataFrame, composite_length_m: float = 1.0, grade_col: str = "grade_pct"
+    ) -> pd.DataFrame:
+        """
+        Composite borehole assay intervals to a fixed length.
+
+        Compositing reduces the effect of variable-length sample intervals
+        by recalculating length-weighted average grades over fixed intervals.
+
+        Args:
+            df: Preprocessed borehole assay DataFrame with interval_m and grade_col.
+            composite_length_m: Target composite interval length in metres.
+            grade_col: Name of the grade column to composite.
+
+        Returns:
+            DataFrame of composited intervals per hole_id.
+        """
+        df = self.preprocess(df)
+        if "interval_m" not in df.columns or grade_col not in df.columns:
+            raise ValueError(f"Columns 'interval_m' and '{grade_col}' required for compositing")
+
+        results = []
+        hole_col = "hole_id" if "hole_id" in df.columns else df.columns[0]
+
+        for hole, grp in df.groupby(hole_col):
+            grp = grp.sort_values("from_m") if "from_m" in grp.columns else grp
+            intervals = grp["interval_m"].values
+            grades = grp[grade_col].values
+            total_length = intervals.sum()
+            n_composites = max(1, int(np.round(total_length / composite_length_m)))
+            comp_length = total_length / n_composites
+
+            # Length-weighted grade for each composite block
+            cumulative = np.concatenate([[0], np.cumsum(intervals)])
+            comp_grades = []
+            for i in range(n_composites):
+                comp_start = i * comp_length
+                comp_end = (i + 1) * comp_length
+                weighted_sum = 0
+                weight_total = 0
+                for j, (s, e) in enumerate(zip(cumulative[:-1], cumulative[1:])):
+                    overlap = max(0, min(e, comp_end) - max(s, comp_start))
+                    if overlap > 0:
+                        weighted_sum += grades[j] * overlap
+                        weight_total += overlap
+                comp_grades.append(weighted_sum / weight_total if weight_total > 0 else 0)
+
+            for i, g in enumerate(comp_grades):
+                results.append({
+                    hole_col: hole,
+                    "composite_from_m": round(i * comp_length, 2),
+                    "composite_to_m": round((i + 1) * comp_length, 2),
+                    "composite_length_m": round(comp_length, 3),
+                    f"composite_{grade_col}": round(g, 4),
+                })
+
+        return pd.DataFrame(results)
+
+    def estimate_resources(
+        self,
+        df: pd.DataFrame,
+        grade_col: str = "grade_pct",
+        cutoff_grade: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        Estimate in-situ mineral resources from borehole assay data.
+
+        Uses a simplified block model approach: each sample interval is treated
+        as a representative volume, tonnage is calculated from interval volume
+        and rock density, and metal quantity is derived from grade × tonnage.
+
+        Args:
+            df: Borehole assay DataFrame (preprocessed).
+            grade_col: Column name for grade values.
+            cutoff_grade: Minimum grade to include in resource estimate.
+                          Overrides config cutoff_grade if provided.
+
+        Returns:
+            Dict with:
+                - total_tonnes: In-situ resource tonnage
+                - mean_grade: Average grade above cutoff
+                - metal_quantity: Total metal in grade units × tonnes
+                - above_cutoff_intervals: Number of intervals above cutoff
+                - grade_distribution: Percentile breakdown of grades
+                - cutoff_grade_used: The cutoff grade applied
+        """
+        df = self.preprocess(df)
+        cutoff = cutoff_grade if cutoff_grade is not None else self.cutoff_grade
+
+        if grade_col not in df.columns:
+            # Try to find a grade column automatically
+            candidate = [c for c in df.columns if "grade" in c.lower()]
+            if candidate:
+                grade_col = candidate[0]
+            else:
+                raise ValueError(f"Grade column '{grade_col}' not found. Available: {list(df.columns)}")
+
+        if "interval_m" not in df.columns:
+            df["interval_m"] = 1.0  # assume 1m intervals if not specified
+
+        # Apply cutoff
+        above = df[df[grade_col] >= cutoff].copy()
+
+        # Tonnage: assume 1m² cross-section per sample interval (simplified)
+        above["tonnes"] = above["interval_m"] * 1.0 * self.density_t_m3 * 1000  # per 1m² block in kt
+        total_tonnes = above["tonnes"].sum()
+        mean_grade = float(np.average(above[grade_col], weights=above["interval_m"])) if not above.empty else 0.0
+        metal_quantity = total_tonnes * mean_grade / 100 if not above.empty else 0.0
+
+        grade_dist = {}
+        if not above.empty:
+            for p in [10, 25, 50, 75, 90]:
+                grade_dist[f"p{p}"] = round(float(np.percentile(above[grade_col], p)), 4)
+
+        return {
+            "cutoff_grade_used": cutoff,
+            "above_cutoff_intervals": int(len(above)),
+            "total_tonnes": round(total_tonnes, 1),
+            "mean_grade": round(mean_grade, 4),
+            "metal_quantity": round(metal_quantity, 2),
+            "grade_distribution": grade_dist,
+            "grade_col_used": grade_col,
+        }
+
     def analyze(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Run core analysis and return summary metrics."""
+        """Run descriptive analysis and return summary metrics."""
         df = self.preprocess(df)
         result = {
             "total_records": len(df),
@@ -59,7 +254,7 @@ class GeoDataProcessor:
         return self.analyze(df)
 
     def to_dataframe(self, result: Dict) -> pd.DataFrame:
-        """Convert analysis result to DataFrame for export."""
+        """Convert result dict to flat DataFrame for export."""
         rows = []
         for k, v in result.items():
             if isinstance(v, dict):
