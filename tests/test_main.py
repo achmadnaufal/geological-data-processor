@@ -104,3 +104,56 @@ class TestAnalyze:
         result = proc.analyze(assay_df)
         assert result["total_records"] == 9
         assert "summary_stats" in result
+
+
+class TestGradeTonnageCurve:
+    def test_returns_dataframe(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        result = proc.grade_tonnage_curve(df)
+        assert isinstance(result, pd.DataFrame)
+
+    def test_cutoff_zero_includes_all(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        result = proc.grade_tonnage_curve(df, cutoffs=[0.0])
+        assert result.iloc[0]["tonnes_above_cutoff"] > 0
+
+    def test_higher_cutoff_less_tonnage(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        result = proc.grade_tonnage_curve(df, cutoffs=[0.0, 0.5, 1.0, 2.0])
+        tonnes = result["tonnes_above_cutoff"].tolist()
+        assert tonnes == sorted(tonnes, reverse=True)
+
+    def test_missing_grade_col_raises(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        with pytest.raises(ValueError, match="Grade column"):
+            proc.grade_tonnage_curve(df, grade_col="nonexistent")
+
+    def test_works_with_precomputed_interval(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        # preprocess may auto-compute interval_m; verify the function runs
+        result = proc.grade_tonnage_curve(df, cutoffs=[0.0])
+        assert len(result) == 1
+        assert result.iloc[0]["tonnes_above_cutoff"] > 0
+
+
+class TestBoreholeSummary:
+    def test_returns_dataframe(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        result = proc.borehole_summary(df)
+        assert isinstance(result, pd.DataFrame)
+
+    def test_correct_hole_count(self, proc, assay_df):
+        df = proc.preprocess(assay_df)
+        df["interval_m"] = df["to_m"] - df["from_m"]
+        result = proc.borehole_summary(df)
+        assert len(result) == 2  # BH001 and BH002
+
+    def test_missing_hole_id_raises(self, proc):
+        df = pd.DataFrame({"grade_pct": [0.5, 1.0], "interval_m": [1.0, 2.0]})
+        with pytest.raises(ValueError, match="hole_id"):
+            proc.borehole_summary(df)

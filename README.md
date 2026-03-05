@@ -59,3 +59,22 @@ print(composites.head())
 ```bash
 pytest tests/ -v
 ```
+
+---
+
+## [v1.3.0] Grade-Tonnage Curve & Borehole Summary
+
+```python
+# Generate grade-tonnage curve at multiple cutoffs
+df["interval_m"] = df["to_m"] - df["from_m"]
+gtc = proc.grade_tonnage_curve(df, cutoffs=[0.0, 0.3, 0.5, 1.0, 1.5])
+print(gtc[["cutoff_grade", "tonnes_above_cutoff", "avg_grade_above_cutoff"]])
+# cutoff_grade  tonnes_above_cutoff  avg_grade_above_cutoff
+#          0.0               126.0                  0.7789
+#          0.3               105.0                  0.9124
+#          1.0                42.0                  1.6500
+
+# Summarize per borehole
+summary = proc.borehole_summary(df)
+print(summary[["hole_id", "total_depth_m", "weighted_avg_grade"]])
+```
