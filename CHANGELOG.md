@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.5.0] - 2026-03-22
+
+### Added
+- **Block Model Estimator** (`src/block_model_estimator.py`) — IDW grade interpolation for coal deposit block models
+  - `DrillHoleComposite` dataclass for structured drill hole sample input (easting, northing, depth, grade dict)
+  - `BlockNode` dataclass for estimated block output with grade values, sample count, mean distance
+  - `estimate_block()` — IDW estimation at a single block centroid with configurable power, search radius, and min/max samples
+  - `generate_model()` — sweeps a 3D grid to produce a full block model over a defined domain extent
+  - `model_statistics()` — mean, min, max, std for any quality parameter across all estimated blocks
+  - Handles coincident sample case (distance = 0) with exact-value assignment
+  - Block IDs auto-generated as `E{e}_N{n}_D{d}` format aligned with common mine software conventions
+  - Anisotropic extension: 3D Euclidean distance used; depth and horizontal treated equally (configurable via future extension)
+  - Input validation on power, search radius, min/max samples, and grid range bounds
+- **Unit tests** — 22 new tests in `tests/test_block_model_estimator.py` covering grid generation, IDW distance weighting, edge cases, and statistics
+
+### References
+- JORC Code 2012 — Australasian Code for Reporting of Mineral Resources
+- Isaaks & Srivastava (1989) Applied Geostatistics, Oxford University Press
+- Sinclair & Blackwell (2002) Applied Mineral Inventory Estimation
+
 ## [1.4.0] - 2026-03-21
 
 ### Added
