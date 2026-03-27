@@ -1,0 +1,5 @@
+sample_id,mine_location,carbon_content,sulfur_content,energy_value,quality_grade
+S001,mine_a,78.5,0.8,6500,high
+S002,mine_b,76.2,1.2,6200,medium
+S003,mine_a,79.1,0.7,6600,high
+S004,mine_c,74.5,1.8,5900,low
