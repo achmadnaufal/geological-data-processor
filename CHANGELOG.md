@@ -124,3 +124,24 @@
 - Added comprehensive docstrings to key functions
 - Added error handling for edge cases
 - Improved README with setup and usage examples
+
+## [1.8.0] - 2026-03-27
+
+### Added
+- **Lithology Classifier** (`src/lithology_classifier.py`) — Rule-based borehole lithology classification for Kalimantan/Sumatra coal basin stratigraphy
+  - `BoreholeInterval` dataclass: interval_id, borehole_id, depth from/to, ash, moisture, VM, GCV, density, grain size, field lithology; computed `thickness_m` and `depth_mid_m` properties
+  - Validation: 10+ quality parameters, grain size enum, depth ordering, density range
+  - `LithologyClassifier` with priority-based classification: (1) coal via ash+GCV, (2) carbonaceous shale 50–70% ash, (3) density range lookup, (4) grain size, (5) fallback undifferentiated
+  - Classification confidence: high (proximate multi-parameter), medium (single parameter), low (grain size or no data)
+  - Field lithology agreement tracking per interval
+  - `classify_borehole()`: full borehole log classification sorted by depth; enforces single borehole_id
+  - `coal_seam_summary()`: coal interval count, total thickness, parting count, split seam detection
+  - `field_agreement_rate()`: QC metric comparing classified vs geologist field calls
+  - Fixed parting detection boundary condition (>= vs > for contiguous intervals)
+  - 9 supported lithologies: coal, carbonaceous_shale, shale, claystone, siltstone, sandstone, conglomerate, tuff, limestone
+- **Unit tests** — 36 new tests in `tests/test_lithology_classifier.py` (all passing)
+
+### References
+- Thomas (2013) Coal Geology. 2nd ed. Wiley-Blackwell
+- ASTM D121 Standard Terminology of Coal and Coke
+- Diessel (1992) Coal-bearing depositional systems. Springer
