@@ -1,74 +1,131 @@
 # Geological Data Processor
 
-Borehole data processing, resource classification, and tonnage estimation for coal mining operations.
+![Python](https://img.shields.io/badge/python-3.9%2B-blue?logo=python) ![License](https://img.shields.io/badge/license-MIT-green) ![Standard](https://img.shields.io/badge/standard-JORC%202012-orange) ![Last Commit](https://img.shields.io/github/last-commit/achmadnaufal/geological-data-processor)
 
-**Domain:** Coal Mining | **Standard:** JORC 2012
+Borehole data processing, resource estimation, and JORC 2012 classification for mineral and coal exploration campaigns.
 
 ## Features
 
-- **Borehole data processing** — load, validate, and preprocess assay data
-- **High-grade interval identification** — flag intervals above grade threshold
-- **Borehole summary statistics** — depth, interval count, weighted average grade
-- **JORC 2012 Resource Classification** — Measured / Indicated / Inferred based on drill spacing
-- **Tonnage Estimation** — in-situ and contained tonnage from area × thickness × density
-- Supports CSV and Excel input formats
+- **Borehole data processing** — load, validate, and preprocess assay data (CSV/Excel)
+- **Interval compositing** — length-weighted grade averaging to fixed composite lengths
+- **Borehole summary** — depth, interval count, max/avg/weighted-average grade per hole
+- **Grade-tonnage curve** — sensitivity of tonnage and contained metal to cutoff grade
+- **Resource estimation** — in-situ tonnes, weighted-average grade, contained metal
+- **JORC 2012 classification** — Measured / Indicated / Inferred based on drill spacing
+- **Tonnage estimation** — area × thickness × bulk density for orebody volume
+- **Grade outlier detection** — flag anomalous assay intervals
 
 ## Installation
 
+**Step 1: Clone the repository**
+```bash
+git clone https://github.com/achmadnaufal/geological-data-processor.git
+cd geological-data-processor
+```
+
+**Step 2: Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-## Quick Start
+## Usage
 
-```python
-from src.main import GeologicalDataProcessor
-
-proc = GeologicalDataProcessor()
-df = proc.load_data("data/boreholes.csv")
-summary = proc.borehole_summary(df)
-print(summary)
+**Step 3: Run the demo**
+```bash
+python3 demo/run_demo.py
 ```
 
-## Usage Examples
-
-### JORC Resource Classification
-
+**Step 4: Use in your own code**
 ```python
-proc = GeologicalDataProcessor()
-df = proc.load_data("data/assay_results.csv")
+from src.main import GeoDataProcessor
 
-result = proc.classify_resource_confidence(df, drill_spacing_m=50.0)
-print(f"Classification: {result['jorc_classification']}")      # Indicated
-print(f"Confidence:     {result['confidence_score']:.1f}/100") # 68.3/100
-print(f"Rationale:      {result['classification_rationale']}")
+proc = GeoDataProcessor(config={"density_t_m3": 1.75, "cutoff_grade": 0.3})
+df = proc.load_data("sample_data/borehole_assay.csv")
+
+summary   = proc.borehole_summary(df)
+resources = proc.estimate_resources(df, grade_col="grade_pct", cutoff_grade=0.3)
+gtc       = proc.grade_tonnage_curve(df)
+jorc      = proc.classify_resource_confidence(df, drill_spacing_m=50.0)
+tonnage   = proc.estimate_tonnage(df, area_sqm=250000, avg_thickness_m=4.5)
 ```
 
-### Tonnage Estimation
-
-```python
-result = proc.estimate_tonnage(
-    df,
-    area_sqm=2_500_000,   # 250 ha orebody
-    avg_thickness_m=4.5,
-    bulk_density_t_m3=1.35,
-    grade_column="grade",
-)
-print(f"In-situ:   {result['in_situ_tonnes']:,.0f} t")
-print(f"Grade:     {result['avg_grade_pct']:.2f}%")
-print(f"Contained: {result['contained_tonnes']:,.0f} t")
-```
-
-### Identify High-Grade Intervals
-
-```python
-high_grade = proc.identify_high_grade_intervals(df, grade_column="grade", threshold=76.0)
-print(high_grade[["hole_id", "from_m", "to_m", "grade"]])
-```
+**Step 5: View results**
+All methods return DataFrames or dicts — pipe to `.to_csv("output.csv")` for export.
 
 ## Data Format
 
-Expected CSV columns: `hole_id, from_m, to_m, interval_m, grade`
+Expected CSV columns:
+```
+hole_id, from_m, to_m, grade_pct, lithology, rock_code
+```
+
+## Example Output
+
+```
+$ python3 demo/run_demo.py
+==============================================================
+  Geological Data Processor — Demo
+==============================================================
+
+✓ Loaded 19 borehole intervals from borehole_assay.csv
+  Drill holes : 4
+  Grade range : 0.05% – 2.31%
+  Lithologies : ['Coal', 'Interburden', 'Overburden']
+
+✓ Borehole Summary:
+  Hole ID    Depth (m)  Intervals  Max Grade  Wtd Avg Grade
+  ----------------------------------------------------------
+  BH001            6.0          6      1.28%          0.61%
+  BH002            6.0          4      2.31%          1.11%
+  BH003            6.0          4      1.82%          0.85%
+  BH004            6.0          5      1.67%          0.87%
+
+✓ Resource Estimate (cutoff grade: 0.3%):
+  Intervals above cutoff : 13
+  In-situ tonnage        : 28,875 t
+  Weighted avg grade     : 1.2024%
+  Contained metal        : 347.2 t
+  Grade distribution     :
+    p10: 0.4420%  p25: 0.6200%  p50: 0.9500%
+    p75: 1.4500%  p90: 1.7900%
+
+✓ Grade-Tonnage Curve (sensitivity to cutoff):
+   Cutoff %       Tonnes  Avg Grade %  Contained t
+  -------------------------------------------------
+     0.0000         42.0      0.8633%         0.36
+     0.4620         23.6      1.3756%         0.32
+     0.9240         17.5      1.5970%         0.28
+     1.3860         12.2      1.8029%         0.22
+
+✓ JORC 2012 Resource Classification (50m drill spacing):
+  Classification  : INDICATED
+  Confidence score: 65.0/100
+  Rationale       : Moderate drill spacing — sufficient for Indicated resource estimation
+
+✓ Tonnage Estimation (250,000 m² × 4.5 m seam):
+  Volume          : 1,125,000 m³
+  In-situ tonnage : 1,518,750 t
+  Avg grade       : 0.787%
+  Contained metal : 11,950 t
+
+==============================================================
+  ✅ Demo complete
+==============================================================
+```
+
+## Architecture
+
+```mermaid
+graph TD
+    A[CSV / Excel\nBorehole Assay Data] --> B[GeoDataProcessor]
+    B --> C[Borehole Summary\nDepth · Grade stats]
+    B --> D[Interval Compositing\nLength-weighted averaging]
+    B --> E[Resource Estimation\nCutoff · Tonnes · Metal]
+    B --> F[Grade-Tonnage Curve\nCutoff sensitivity]
+    B --> G[JORC Classification\nMeasured/Indicated/Inferred]
+    B --> H[Tonnage Estimation\nArea × Thickness × Density]
+    C & D & E & F & G & H --> I[Export / Report]
+```
 
 ## Testing
 
@@ -76,21 +133,6 @@ Expected CSV columns: `hole_id, from_m, to_m, interval_m, grade`
 pytest tests/ -v
 ```
 
-## Project Structure
+---
 
-```
-geological-data-processor/
-├── src/
-│   ├── main.py           # Core processing logic
-│   └── data_generator.py # Sample data generator
-├── tests/                # Unit tests
-├── data/                 # Input data (gitignored)
-├── examples/             # Usage scripts
-└── sample_data/          # Sample datasets
-```
-
-## Edge Case Handling
-
-This version includes improved validation and edge case handling across all data inputs.
-See sample_data/realistic_data.csv for example datasets.
-
+> Built by [Achmad Naufal](https://github.com/achmadnaufal) | Lead Data Analyst | Power BI · SQL · Python · GIS
