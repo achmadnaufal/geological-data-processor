@@ -1,3 +1,18 @@
+## [1.8.0] - 2026-04-01
+
+### Added
+- **Seam Correlation Engine** (`src/seam_correlation_engine.py`) — multi-criterion coal seam correlation across drillholes for Indonesian Kalimantan and Sumatera stratigraphy
+  - `SeamPick` dataclass: hole ID, top/bottom depth, elevation (mASL), ash %, CV kcal/kg, sulfur %, split seam flag
+  - `SeamCorrelationEngine.correlate_all()`: all-vs-all hole correlation using elevation (40%), thickness (30%), ash quality (15%), CV quality (15%) scoring
+  - Configurable tolerances: elevation (±10 m default), thickness (±3 m), ash (±5%), CV (±500 kcal)
+  - Match levels: STRONG (≥75), MODERATE (≥50), WEAK (≥25); REJECT below threshold
+  - Correlation confidence: HIGH/MODERATE/LOW/POOR based on ratio of correlated hole pairs
+  - Uncorrelated hole detection — flags holes that don't correlate with any neighbour
+  - `thickness_statistics()`, `quality_statistics()`: mean/SD/CV across all picks
+  - `dip_estimate()`: elevation range summary for dip estimation
+  - Domain context: Tutupan, Paringin, Wara seam groups (South Kalimantan)
+- **Unit tests** — 17 new tests in `tests/test_seam_correlation_engine.py` (all passing)
+
 ## [New] - 2026-03-28
 ### Added
 - Edge case validators and handlers
