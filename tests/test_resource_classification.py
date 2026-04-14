@@ -3,12 +3,12 @@ Unit tests for JORC resource classification and tonnage estimation.
 """
 import pytest
 import pandas as pd
-from src.main import GeologicalDataProcessor
+from src.main import GeoDataProcessor
 
 
 @pytest.fixture
 def processor():
-    return GeologicalDataProcessor()
+    return GeoDataProcessor()
 
 
 @pytest.fixture

@@ -1,6 +1,8 @@
-# Geological Data Processor
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Last Commit](https://img.shields.io/github/last-commit/achmadnaufal/geological-data-processor)
 
-![Python](https://img.shields.io/badge/python-3.9%2B-blue?logo=python) ![License](https://img.shields.io/badge/license-MIT-green) ![Standard](https://img.shields.io/badge/standard-JORC%202012-orange) ![Last Commit](https://img.shields.io/github/last-commit/achmadnaufal/geological-data-processor)
+# Geological Data Processor
 
 Borehole data processing, resource estimation, and JORC 2012 classification for mineral and coal exploration campaigns.
 
@@ -118,13 +120,14 @@ $ python3 demo/run_demo.py
 ```mermaid
 graph TD
     A[CSV / Excel\nBorehole Assay Data] --> B[GeoDataProcessor]
-    B --> C[Borehole Summary\nDepth · Grade stats]
-    B --> D[Interval Compositing\nLength-weighted averaging]
-    B --> E[Resource Estimation\nCutoff · Tonnes · Metal]
-    B --> F[Grade-Tonnage Curve\nCutoff sensitivity]
-    B --> G[JORC Classification\nMeasured/Indicated/Inferred]
-    B --> H[Tonnage Estimation\nArea × Thickness × Density]
-    C & D & E & F & G & H --> I[Export / Report]
+    B --> C[DrillHoleValidator\nCollar · survey · assay checks]
+    C --> D[LithologyClassifier\nRock-type tagging]
+    C --> E[CompositeIntervalSampler\nLength-weighted compositing]
+    E --> F[VariogramModelFitter\nSpatial continuity modelling]
+    F --> G[BlockModelEstimator\nResource block estimation]
+    B --> H[SeamCorrelationEngine\nCross-hole seam matching]
+    B --> I[GradeOutlierDetector\nAnomaly flagging]
+    D & E & G & H & I --> J[Export / Report]
 ```
 
 ## Testing
