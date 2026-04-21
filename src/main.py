@@ -348,7 +348,7 @@ class GeoDataProcessor:
 
         if grade_cols:
             g = grade_cols[0]
-            grade_agg = df.groupby("hole_id").apply(
+            grade_agg = df.groupby("hole_id", group_keys=False).apply(
                 lambda x: pd.Series({
                     "max_grade": x[g].max(),
                     "avg_grade": x[g].mean(),
@@ -356,7 +356,8 @@ class GeoDataProcessor:
                         np.average(x[g], weights=x["interval_m"])
                         if "interval_m" in x.columns else x[g].mean()
                     ),
-                })
+                }),
+                include_groups=False,
             ).reset_index()
             agg = agg.merge(grade_agg, on="hole_id")
 
